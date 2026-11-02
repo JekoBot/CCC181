@@ -1,9 +1,42 @@
 {% extends "base.html" %}
-
-{% block title %}Ticket #{{ ticket_id }} · UniformQ{% endblock %}
+{% block title %}My place · UniformQ{% endblock %}
 
 {% block content %}
-  <h2>Ticket #{{ ticket_id }}</h2>
-  <p>This page was built from the URL <code>/queue/{{ ticket_id }}</code>.</p>
-  <p><a href="{{ url_for('index') }}">&larr; Back to the queue</a></p>
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <h1 class="h3 mb-3">My place</h1>
+
+    <div class="card text-center">
+      <div class="card-body p-4">
+        <p class="text-body-secondary mb-0">Your queue number</p>
+        <p class="display-1 fw-bold mb-3">#{{ ticket.number }}</p>
+
+        <div id="live-status" aria-live="polite">
+          <p class="mb-2">
+            <span id="status-badge" class="badge fs-6 {{ badge_class }}">{{ status_label }}</span>
+          </p>
+          <p id="position-text" class="fs-4 fw-semibold mb-3">{{ position_text }}</p>
+        </div>
+
+        {% if ticket.status in ['waiting', 'called'] %}
+          <p class="fw-semibold">Please bring your receipt to the counter when called.</p>
+        {% endif %}
+
+        <p class="text-body-secondary mb-1">Your items</p>
+        <ul class="list-group mb-4 text-start">
+          {% for item in items %}
+            <li class="list-group-item">{{ loop.index }}. {{ item.name }}, size {{ item.size }}</li>
+          {% endfor %}
+        </ul>
+
+        {% if ticket.status in ['waiting', 'called'] %}
+          <form method="post" action="{{ url_for('leave_queue', ticket_id=ticket.number) }}"
+                onsubmit="return confirm('Leave the queue?');">
+            <button type="submit" class="btn btn-outline-secondary btn-lg w-100">Leave queue</button>
+          </form>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}

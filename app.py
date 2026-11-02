@@ -86,11 +86,61 @@ def join():
     flash(f"You joined the queue. Your queue number is #{number}.", "success")
     return redirect(url_for("ticket", ticket_id=number))
 
+STATUS_LABELS = {"waiting": "Waiting", "called": "Called", "served": "Served",
+                 "no-show": "No-show", "left": "Left the queue"}
+STATUS_BADGES = {"waiting": "text-bg-warning", "called": "text-bg-success",
+                 "served": "text-bg-secondary", "no-show": "text-bg-danger",
+                 "left": "text-bg-secondary"}
+
+
+def find_ticket(ticket_id):
+    return next((t for t in TICKETS if t["number"] == ticket_id), None)
+
+
+def people_ahead(t):
+    """Students still waiting with an earlier queue number. One queue for everyone."""
+    return sum(1 for x in TICKETS
+               if x["status"] == "waiting" and x["number"] < t["number"])
+
+
+def position_text(t, ahead):
+    if t["status"] == "waiting":
+        if ahead == 0:
+            return "You're next!"
+        return "1 person ahead of you" if ahead == 1 else f"{ahead} people ahead of you"
+    if t["status"] == "called":
+        return "It's your turn. Please come to the counter now."
+    if t["status"] == "served":
+        return "You've been served. Thank you!"
+    return "You are no longer in the queue."
+
+
 
 @app.get("/queue/<int:ticket_id>")
 def ticket(ticket_id):
-    # Temporary. Part 6 replaces this with the real My place page.
-    return f"Queue number {ticket_id} coming soon"
+    t = find_ticket(ticket_id)
+    if t is None:
+        abort(404)
+    ahead = people_ahead(t)
+    names = {s["id"]: s["name"] for s in SERVICES}
+    items = [{"name": names[i["service_id"]], "size": i["size"]} for i in t["items"]]
+    return render_template("ticket.html", ticket=t, items=items,
+                           status_label=STATUS_LABELS[t["status"]],
+                           badge_class=STATUS_BADGES[t["status"]],
+                           position_text=position_text(t, ahead))
+
+
+@app.post("/queue/<int:ticket_id>/leave")
+def leave_queue(ticket_id):
+    t = find_ticket(ticket_id)
+    if t is None:
+        abort(404)
+    if t["status"] in ("waiting", "called"):
+        t["status"] = "left"
+        flash("You left the queue.", "info")
+    else:
+        flash("This queue number is no longer active.", "warning")
+    return redirect(url_for("index"))
 
 
 @app.route("/staff")
@@ -99,5 +149,5 @@ def staff_dashboard():
 
 
 if __name__ == "__main__":
-    # Lets you also start the app with: python app.py
+    
     app.run(debug=True)
