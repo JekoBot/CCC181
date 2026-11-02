@@ -14,7 +14,7 @@
 
 ### Scenario
 
-Ana sees the Langkit University Shop's Facebook post saying PE uniforms can be claimed this week. She already has her receipt from the sizing. She goes to the shop and finds a long line outside in the sun. Nothing tells her how many people are ahead, so she stays put and chats with a friend for over an hour. Only then does the line move into the air-conditioned theater room. With the app, she would join the queue from her phone, choose her items and sizes, and wait somewhere cool. She sees her number and how many people are ahead, and when her turn is near the app tells her to come to the counter with her receipt.
+Ana sees the Langkit University Shop's Facebook post saying PE uniforms can be claimed this week. She already has her receipt from the sizing. She goes to the shop and finds a long line outside in the sun. Nothing tells her how many people are ahead, so she stays put and chats with a friend for over an hour. Only then does the line move into the air-conditioned theater room. With the app, she would join the queue from her phone, choose her items and sizes according to the receipt she has, and wait somewhere cool. She sees her number and how many people are ahead, and when her turn is near the app tells her to come to the counter with her receipt.
 
 ### Top tasks in the app
 
@@ -22,8 +22,8 @@ Ana sees the Langkit University Shop's Facebook post saying PE uniforms can be c
 | --- | --- | --- |
 | Join the queue with my name, section, items and sizes | Join | FR-01 |
 | Check my number and how many people are ahead | My place | FR-02 |
-| See when my turn is near, without refreshing | My place | FR-0X |
-| Leave the queue if I can't make it | My place | FR-0X |
+| See when my turn is near, without refreshing | My place | FR-06 |
+| Leave the queue if I can't make it | My place | FR-07 |
 
 ### What this means for my interface
 
@@ -57,14 +57,14 @@ On a claiming day, students arrive holding the receipt from their sizing. There 
 | Task | Screen | Requirement ID |
 | --- | --- | --- |
 | See the waiting list in one clear queue order, with each student's name, section, items and sizes | Staff dashboard | FR-04 |
-| Call the next student | Staff dashboard | FR-0X |
-| Mark a student as served | Staff dashboard | FR-0X |
-| Mark a student as no-show (optional, one tap) | Staff dashboard | FR-0X |
+| Call the next student | Staff dashboard | FR-05 |
+| Mark a student as served | Staff dashboard | FR-05 |
+| Mark a student as no-show (optional, one tap) | Staff dashboard | FR-05 |
 
 ### What this means for my interface
 
 1. Because people cut in line and nothing records who came first (interview), my interface must show every student in a single queue order that staff cannot rearrange, so the list settles any argument.
 2. Because the venue was overcrowded (interview), my interface must show how many students are waiting, so staff can see the line without anyone crowding the area.
 3. Because Rey works from a laptop spreadsheet and needs quick lookup (interview), my interface must show the queue as one compact table with the next student at the top, so a lookup takes seconds.
-4. Because he must not give the wrong size or misplace a receipt (interview), my interface must show each student's name, section, items and sizes next to their queue number, so he can prepare the right uniform before calling them.
+4. Because he must not give the wrong size or misplace a receipt (interview), my interface must show each student's name, section, items and sizes next to their queue number, so he can compare the information to the receipt.
 5. Because he stands over a table scanning a laptop screen (interview), my interface must use high contrast and large text, and let him use Call next, Served and No-show with the keyboard (Tab and Enter) as well as the mouse.

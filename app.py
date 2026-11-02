@@ -4,9 +4,10 @@ Run it with:
     flask --app app run --debug
 then open http://127.0.0.1:5000
 """
-from flask import Flask, render_template
+from flask import Flask, abort, flash, redirect, render_template, request, url_for
 
 app = Flask(__name__)
+app.secret_key = "dev-only-change-me"
 
 SERVICES = [
     {"id": 1, "name": "PE shirt"},
@@ -26,22 +27,17 @@ TICKETS = [
 
 @app.route("/")
 def index():
-    # render_template looks inside the templates/ folder and passes
-    # keyword arguments to the template as variables.
-    numbers = [t["number"] for t in TICKETS]
-    return render_template("index.html", name="Ana", tickets=numbers)
+    return render_template("index.html")
 
 
-@app.route("/queue/<int:ticket_id>")
-def ticket(ticket_id):
-    # <int:ticket_id> only matches numbers, so /queue/abc returns 404.
-    return render_template("ticket.html", ticket_id=ticket_id)
+@app.route("/join")
+def join_form():
+    return "Join form coming soon"
 
 
-@app.route("/hello")
-def hello():
-    # The plain-string version from the Routes slide.
-    return "Hello, CCC181!"
+@app.route("/staff")
+def staff_dashboard():
+    return "Staff dashboard coming soon"
 
 
 if __name__ == "__main__":

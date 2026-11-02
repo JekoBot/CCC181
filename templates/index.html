@@ -1,14 +1,10 @@
 {% extends "base.html" %}
+{% block title %}UniformQ{% endblock %}
 
 {% block content %}
-  <p>Hello, {{ name }}!</p>
-
-  <h2>Tickets in the queue</h2>
-  <ul class="tickets">
-    {% for t in tickets %}
-      <li><a href="{{ url_for('ticket', ticket_id=t) }}">#{{ t }}</a></li>
-    {% else %}
-      <li>The queue is empty.</li>
-    {% endfor %}
-  </ul>
+<div class="text-center py-5">
+  <h1 class="display-5 fw-bold">UniformQ</h1>
+  <p class="lead">Join the line for your PE uniform from your phone and see your place in the queue.</p>
+  <a class="btn btn-primary btn-lg" href="{{ url_for('join_form') }}">Join the queue</a>
+</div>
 {% endblock %}
