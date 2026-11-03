@@ -143,10 +143,67 @@ def leave_queue(ticket_id):
     return redirect(url_for("index"))
 
 
-@app.route("/staff")
+@app.get("/staff")
 def staff_dashboard():
-    return "Staff dashboard coming soon"
+    service_id = request.args.get("service_id", type=int)
+    names = {s["id"]: s["name"] for s in SERVICES}
 
+    def wants(t):
+        return service_id is None or any(i["service_id"] == service_id for i in t["items"])
+
+    active = [t for t in TICKETS if t["status"] in ("waiting", "called") and wants(t)]
+    active.sort(key=lambda t: t["number"])
+
+    rows = []
+    for t in active:
+        first = t["items"][0]
+        second = t["items"][1] if len(t["items"]) > 1 else None
+        rows.append({
+            "number": t["number"], "name": t["name"], "section": t["section"],
+            "item1": names[first["service_id"]], "size1": first["size"],
+            "item2": names[second["service_id"]] if second else "-",
+            "size2": second["size"] if second else "-",
+            "status": t["status"],
+            "status_label": STATUS_LABELS[t["status"]],
+            "badge_class": STATUS_BADGES[t["status"]],
+        })
+
+    waiting_count = sum(1 for r in rows if r["status"] == "waiting")
+    now_serving = [r for r in rows if r["status"] == "called"]
+    # ★ How many students are waiting for each item
+    counts = {s["id"]: sum(1 for t in TICKETS
+                           if t["status"] == "waiting"
+                           and any(i["service_id"] == s["id"] for i in t["items"]))
+              for s in SERVICES}
+    return render_template("staff.html", rows=rows, services=SERVICES, selected=service_id,
+                           waiting_count=waiting_count, now_serving=now_serving, counts=counts)
+
+
+@app.post("/staff/call-next")
+def call_next():
+    service_id = request.form.get("service_id", type=int)
+    waiting = [t for t in TICKETS
+               if t["status"] == "waiting"
+               and (service_id is None or any(i["service_id"] == service_id for i in t["items"]))]
+    if not waiting:
+        flash("No one is waiting.", "warning")
+    else:
+        nxt = min(waiting, key=lambda t: t["number"])
+        nxt["status"] = "called"
+        flash(f"Queue number #{nxt['number']} ({nxt['name']}) called.", "info")
+    return redirect(url_for("staff_dashboard", service_id=service_id))
+
+
+@app.post("/staff/tickets/<int:ticket_id>/<action>")
+def staff_action(ticket_id, action):
+    new_status = {"serve": "served", "no-show": "no-show"}.get(action)
+    t = find_ticket(ticket_id)
+    if t is None or new_status is None:
+        abort(404)
+    t["status"] = new_status
+    flash(f"Queue number #{ticket_id} marked {STATUS_LABELS[new_status].lower()}.", "info")
+    return redirect(url_for("staff_dashboard",
+                            service_id=request.form.get("service_id", type=int)))
 
 if __name__ == "__main__":
     
