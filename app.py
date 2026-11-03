@@ -143,6 +143,22 @@ def leave_queue(ticket_id):
     return redirect(url_for("index"))
 
 
+@app.get("/queue/<int:ticket_id>/status.json")
+def ticket_status(ticket_id):
+    t = find_ticket(ticket_id)
+    if t is None:
+        abort(404)
+    ahead = people_ahead(t)
+    return {
+        "status": t["status"],
+        "status_label": STATUS_LABELS[t["status"]],
+        "badge_class": STATUS_BADGES[t["status"]],
+        "position_text": position_text(t, ahead),
+        "ahead": ahead,
+        "active": t["status"] in ("waiting", "called"),
+    }
+
+
 @app.get("/staff")
 def staff_dashboard():
     service_id = request.args.get("service_id", type=int)

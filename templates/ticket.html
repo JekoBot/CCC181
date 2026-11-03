@@ -18,9 +18,10 @@
           <p id="position-text" class="fs-4 fw-semibold mb-3">{{ position_text }}</p>
         </div>
 
-        {% if ticket.status in ['waiting', 'called'] %}
-          <p class="fw-semibold">Please bring your receipt to the counter when called.</p>
-        {% endif %}
+               <p id="receipt-note" class="fw-semibold"
+           {% if ticket.status not in ['waiting', 'called'] %}hidden{% endif %}>
+          Please bring your receipt to the counter when called.
+        </p>
 
         <p class="text-body-secondary mb-1">Your items</p>
         <ul class="list-group mb-4 text-start">
@@ -29,14 +30,41 @@
           {% endfor %}
         </ul>
 
-        {% if ticket.status in ['waiting', 'called'] %}
-          <form method="post" action="{{ url_for('leave_queue', ticket_id=ticket.number) }}"
-                onsubmit="return confirm('Leave the queue?');">
-            <button type="submit" class="btn btn-outline-secondary btn-lg w-100">Leave queue</button>
-          </form>
-        {% endif %}
+        <form id="leave-form" method="post"
+              action="{{ url_for('leave_queue', ticket_id=ticket.number) }}"
+              onsubmit="return confirm('Leave the queue?');"
+              {% if ticket.status not in ['waiting', 'called'] %}hidden{% endif %}>
+          <button type="submit" class="btn btn-outline-secondary btn-lg w-100">Leave queue</button>
+        </form>
       </div>
     </div>
   </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const statusUrl = "{{ url_for('ticket_status', ticket_id=ticket.number) }}";
+  const badge = document.getElementById("status-badge");
+  const positionText = document.getElementById("position-text");
+  const receiptNote = document.getElementById("receipt-note");
+  const leaveForm = document.getElementById("leave-form");
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch(statusUrl);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      badge.textContent = data.status_label;
+      badge.className = "badge fs-6 " + data.badge_class;
+      positionText.textContent = data.position_text;
+      receiptNote.hidden = !data.active;
+      leaveForm.hidden = !data.active;
+    } catch (err) {
+      console.warn("Could not refresh status", err);
+    }
+  }
+  setInterval(refreshStatus, 10000);
+</script>
 {% endblock %}
