@@ -8,7 +8,7 @@
 - **Student ID:** 2024-0322
 - **Section:** CS3
 - **Date:** 11/4/2026
-- **Pull request:** https://github.com/JekoBot/CCC181/pull/[number]
+- **Pull request:** https://github.com/JekoBot/CCC181/pull/2
 
 The Week 1 proposal was skipped in this course, so I wrote the requirement list in [`requirements.md`](requirements.md) this week. The IDs below (FR-01 to FR-07) come from that file.
 
