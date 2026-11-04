@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+{% block title %}Staff dashboard · UniformQ{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Staff dashboard</h1>
+
+<div class="row g-3 align-items-end mb-3">
+  <div class="col-12 col-md-6">
+    <form method="get" action="{{ url_for('staff_dashboard') }}">
+      <label for="service_id" class="form-label">Filter by item</label>
+      <div class="input-group">
+        <select id="service_id" name="service_id" class="form-select form-select-lg">
+          <option value="">All items</option>
+          {% for s in services %}
+            <option value="{{ s.id }}" {% if selected == s.id %}selected{% endif %}>
+              {{ s.name }} ({{ counts[s.id] }} waiting)
+            </option>
+          {% endfor %}
+        </select>
+        <button class="btn btn-outline-primary btn-lg" type="submit">Filter</button>
+      </div>
+    </form>
+  </div>
+
+  <div class="col-12 col-md-6">
+    <form method="post" action="{{ url_for('call_next') }}">
+      <input type="hidden" name="service_id" value="{{ selected or '' }}">
+      <button type="submit" class="btn btn-primary btn-lg w-100 py-3"
+              {% if waiting_count == 0 %}disabled{% endif %}>
+        <span class="fs-4 d-block">Call next</span>
+        <span class="fw-semibold">
+          {{ waiting_count }} {{ 'person' if waiting_count == 1 else 'people' }} waiting
+        </span>
+      </button>
+    </form>
+  </div>
+</div>
+
+{% if now_serving %}
+  <div class="alert alert-success" role="status">
+    <strong>Now serving:</strong>
+    {% for r in now_serving %}
+      #{{ r.number }} {{ r.name }} ({{ r.section }}){% if not loop.last %}, {% endif %}
+    {% endfor %}
+  </div>
+{% endif %}
+
+{% if rows %}
+<div class="table-responsive">
+  <table class="table table-striped align-middle fs-6">
+    <caption class="visually-hidden">Students waiting or called, in queue order</caption>
+    <thead>
+      <tr>
+        <th scope="col">#</th>
+        <th scope="col">Name</th>
+        <th scope="col">Section</th>
+        <th scope="col">Item 1</th>
+        <th scope="col">Size 1</th>
+        <th scope="col">Item 2</th>
+        <th scope="col">Size 2</th>
+        <th scope="col">Status</th>
+        <th scope="col">Actions</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for r in rows %}
+      <tr>
+        <th scope="row">{{ r.number }}</th>
+        <td>{{ r.name }}</td>
+        <td>{{ r.section }}</td>
+        <td>{{ r.item1 }}</td>
+        <td>{{ r.size1 }}</td>
+        <td>{{ r.item2 }}</td>
+        <td>{{ r.size2 }}</td>
+        <td><span class="badge {{ r.badge_class }}">{{ r.status_label }}</span></td>
+        <td class="text-nowrap">
+          <form method="post" class="d-inline"
+                action="{{ url_for('staff_action', ticket_id=r.number, action='serve') }}">
+            <input type="hidden" name="service_id" value="{{ selected or '' }}">
+            <button class="btn btn-success"
+                    {% if r.status != 'called' %}disabled{% endif %}
+                    aria-label="Serve queue number {{ r.number }}, {{ r.name }}">Serve</button>
+          </form>
+          <form method="post" class="d-inline ms-2"
+                action="{{ url_for('staff_action', ticket_id=r.number, action='no-show') }}">
+            <input type="hidden" name="service_id" value="{{ selected or '' }}">
+            <button class="btn btn-outline-danger"
+                    {% if r.status != 'called' %}disabled{% endif %}
+                    aria-label="Mark queue number {{ r.number }}, {{ r.name }}, as no-show">No-show</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% else %}
+  <div class="alert alert-secondary">No one is waiting right now.</div>
+{% endif %}
+{% endblock %}

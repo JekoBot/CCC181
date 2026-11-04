@@ -1,0 +1,45 @@
+/* Colors borrowed from the Week 2 slide deck */
+:root {
+  --navy: #16223A;
+  --paper: #F6F4EE;
+  --card: #FFFDF8;
+  --teal: #2D6F78;
+  --orange: #B4501E;
+}
+
+body {
+  font-family: "IBM Plex Sans", Arial, sans-serif;
+  background: var(--paper);
+  color: #1B2438;
+}
+
+/* Accessibility: touch targets of at least 44 px */
+.btn { min-height: 44px; }
+.navbar-toggler { min-height: 44px; min-width: 44px; }
+
+/* Accessibility: contrast on the navbar and outline buttons */
+.navbar .nav-link { color: #fff; }
+.btn-outline-danger { color: #a52834; border-color: #a52834; }
+.btn-outline-primary { color: #0a58ca; border-color: #0a58ca; }
+
+/* Current page: bold and underlined, so it is clear without color or a mouse */
+.navbar .navbar-nav .nav-link.active {
+  font-weight: 700;
+  text-decoration: underline;
+  text-decoration-thickness: 3px;
+  text-underline-offset: 8px;
+}
+
+/* Keyboard focus: a visible outline on every control */
+*:focus-visible {
+  outline: 3px solid #0a2540 !important;
+  outline-offset: 2px;
+}
+
+/* On the blue navbar, use a white outline and a light background */
+.navbar *:focus-visible {
+  outline: 3px solid #fff !important;
+  outline-offset: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 0.375rem;
+}

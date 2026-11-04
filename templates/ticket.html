@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}My place · UniformQ{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+  <div class="col-12 col-md-8 col-lg-6">
+    <h1 class="h3 mb-3">My place</h1>
+
+    <div class="card text-center">
+      <div class="card-body p-4">
+        <p class="text-body-secondary mb-0">Your queue number</p>
+        <p class="display-1 fw-bold mb-3">#{{ ticket.number }}</p>
+
+        <div id="live-status" aria-live="polite">
+          <p class="mb-2">
+            <span id="status-badge" class="badge fs-6 {{ badge_class }}">{{ status_label }}</span>
+          </p>
+          <p id="position-text" class="fs-4 fw-semibold mb-3">{{ position_text }}</p>
+        </div>
+
+               <p id="receipt-note" class="fw-semibold"
+           {% if ticket.status not in ['waiting', 'called'] %}hidden{% endif %}>
+          Please bring your receipt to the counter when called.
+        </p>
+
+        <p class="text-body-secondary mb-1">Your items</p>
+        <ul class="list-group mb-4 text-start">
+          {% for item in items %}
+            <li class="list-group-item">{{ loop.index }}. {{ item.name }}, size {{ item.size }}</li>
+          {% endfor %}
+        </ul>
+
+        <form id="leave-form" method="post"
+              action="{{ url_for('leave_queue', ticket_id=ticket.number) }}"
+              onsubmit="return confirm('Leave the queue?');"
+              {% if ticket.status not in ['waiting', 'called'] %}hidden{% endif %}>
+          <button type="submit" class="btn btn-outline-secondary btn-lg w-100">Leave queue</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const statusUrl = "{{ url_for('ticket_status', ticket_id=ticket.number) }}";
+  const badge = document.getElementById("status-badge");
+  const positionText = document.getElementById("position-text");
+  const receiptNote = document.getElementById("receipt-note");
+  const leaveForm = document.getElementById("leave-form");
+
+  async function refreshStatus() {
+    try {
+      const res = await fetch(statusUrl);
+      if (!res.ok) return;
+      const data = await res.json();
+
+      badge.textContent = data.status_label;
+      badge.className = "badge fs-6 " + data.badge_class;
+      positionText.textContent = data.position_text;
+      receiptNote.hidden = !data.active;
+      leaveForm.hidden = !data.active;
+    } catch (err) {
+      console.warn("Could not refresh status", err);
+    }
+  }
+  setInterval(refreshStatus, 10000);
+</script>
+{% endblock %}
