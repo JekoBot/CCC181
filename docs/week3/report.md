@@ -24,22 +24,22 @@ Top tasks: see the waiting list in one queue order (FR-04), call the next studen
 
 ## Screens
 
-![Join on a phone](screenshots/join-phone.png)
+![Join on a phone](screenshots/join_phone.png)
 Ana uses the Join screen to get a queue number with her name, section, items and sizes (FR-01, FR-03).
 
-![Join on a laptop](screenshots/join-laptop.png)
+![Join on a laptop](screenshots/join_desktop.png)
 Ana can also join from a laptop, with the same form and the same checks (FR-01, FR-03).
 
-![My place on a phone](screenshots/myplace-phone.png)
+![My place on a phone](screenshots/myplace_phone.png)
 Ana checks her queue number, status and people ahead here, and sees the receipt reminder (FR-02, FR-06, FR-07).
 
-![My place on a laptop](screenshots/myplace-laptop.png)
+![My place on a laptop](screenshots/myplace_desktop.png)
 The same My place page on a laptop (FR-02, FR-06, FR-07).
 
-![Staff dashboard on a phone](screenshots/staff-phone.png)
+![Staff dashboard on a phone](screenshots/staffdashboard_phone.png)
 Rey can use the dashboard on a phone, with the table scrolling sideways inside its box (FR-04, FR-05).
 
-![Staff dashboard on a laptop](screenshots/staff-laptop.png)
+![Staff dashboard on a laptop](screenshots/staffdashboard_desktop.png)
 Rey's main screen is the laptop dashboard, with Call next, the waiting count and the queue table (FR-04, FR-05).
 
 ## Design decisions
