@@ -78,12 +78,14 @@
                 action="{{ url_for('staff_action', ticket_id=r.number, action='serve') }}">
             <input type="hidden" name="service_id" value="{{ selected or '' }}">
             <button class="btn btn-success"
+                    {% if r.status != 'called' %}disabled{% endif %}
                     aria-label="Serve queue number {{ r.number }}, {{ r.name }}">Serve</button>
           </form>
           <form method="post" class="d-inline ms-2"
                 action="{{ url_for('staff_action', ticket_id=r.number, action='no-show') }}">
             <input type="hidden" name="service_id" value="{{ selected or '' }}">
             <button class="btn btn-outline-danger"
+                    {% if r.status != 'called' %}disabled{% endif %}
                     aria-label="Mark queue number {{ r.number }}, {{ r.name }}, as no-show">No-show</button>
           </form>
         </td>

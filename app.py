@@ -216,11 +216,10 @@ def staff_action(ticket_id, action):
     t = find_ticket(ticket_id)
     if t is None or new_status is None:
         abort(404)
-    t["status"] = new_status
-    flash(f"Queue number #{ticket_id} marked {STATUS_LABELS[new_status].lower()}.", "info")
+    if t["status"] != "called":
+        flash(f"Queue number #{ticket_id} must be called first.", "warning")
+    else:
+        t["status"] = new_status
+        flash(f"Queue number #{ticket_id} marked {STATUS_LABELS[new_status].lower()}.", "info")
     return redirect(url_for("staff_dashboard",
                             service_id=request.form.get("service_id", type=int)))
-
-if __name__ == "__main__":
-    
-    app.run(debug=True)
