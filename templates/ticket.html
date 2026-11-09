@@ -18,6 +18,11 @@
           <p id="position-text" class="fs-4 fw-semibold mb-3">{{ position_text }}</p>
         </div>
 
+                  <div id="venue-alert" class="alert alert-success fw-semibold"
+               {% if not go_to_venue %}hidden{% endif %}>
+            Your turn is coming up. Please head to the venue now.
+          </div>
+
                <p id="receipt-note" class="fw-semibold"
            {% if ticket.status not in ['waiting', 'called'] %}hidden{% endif %}>
           Please bring your receipt to the counter when called.
@@ -49,6 +54,7 @@
   const positionText = document.getElementById("position-text");
   const receiptNote = document.getElementById("receipt-note");
   const leaveForm = document.getElementById("leave-form");
+  const venueAlert = document.getElementById("venue-alert");
 
   async function refreshStatus() {
     try {
@@ -59,6 +65,7 @@
       badge.textContent = data.status_label;
       badge.className = "badge fs-6 " + data.badge_class;
       positionText.textContent = data.position_text;
+      venueAlert.hidden = !data.go_to_venue;
       receiptNote.hidden = !data.active;
       leaveForm.hidden = !data.active;
     } catch (err) {

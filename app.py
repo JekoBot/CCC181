@@ -4,7 +4,9 @@ Run it with:
     flask --app app run --debug
 then open http://127.0.0.1:5000
 """
-from flask import Flask, abort, flash, redirect, render_template, request, url_for
+import secrets
+
+from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 
 app = Flask(__name__)
 app.secret_key = "dev-only-change-me"
@@ -18,17 +20,62 @@ SERVICES = [
 SIZES = ["XS", "S", "M", "L", "XL", "2XL"]
 
 # Sample data for the demo. A real app would load this from a database later.
-# Each ticket: number, name, section, items, status
+# Each ticket: number, name, section, items, status, session_id
 # items is a list of {"service_id", "size"}, one or two entries
-# status is one of: waiting, called, served, no-show
+# status is one of: waiting, called, served, no-show, left
 TICKETS = [
     {"number": 1, "name": "Ana", "section": "BSCS 1A",
      "items": [{"service_id": 1, "size": "M"}, {"service_id": 2, "size": "L"}],
-     "status": "waiting"},
+     "status": "waiting", "session_id": None},
     {"number": 2, "name": "Ben", "section": "BSCS 1B",
      "items": [{"service_id": 1, "size": "L"}],
-     "status": "waiting"},
+     "status": "waiting", "session_id": None},
 ]
+
+STATUS_LABELS = {"waiting": "Waiting", "called": "Called", "served": "Served",
+                 "no-show": "No-show", "left": "Left the queue"}
+STATUS_BADGES = {"waiting": "text-bg-warning", "called": "text-bg-success",
+                 "served": "text-bg-secondary", "no-show": "text-bg-danger",
+                 "left": "text-bg-secondary"}
+
+
+def find_ticket(ticket_id):
+    return next((t for t in TICKETS if t["number"] == ticket_id), None)
+
+
+def active_ticket():
+    """The ticket this browser joined with, if it is still waiting or called."""
+    token = session.get("session_id")
+    if not token:
+        return None
+    return next((t for t in TICKETS
+                 if t.get("session_id") == token
+                 and t["status"] in ("waiting", "called")), None)
+
+
+def people_ahead(t):
+    """Students still waiting with an earlier queue number. One queue for everyone."""
+    return sum(1 for x in TICKETS
+               if x["status"] == "waiting" and x["number"] < t["number"])
+
+
+GO_TO_VENUE_AHEAD = 5  # tell students to head to the venue when fewer than this many are ahead
+
+
+def should_go_to_venue(t, ahead):
+    return t["status"] in ("waiting", "called") and ahead < GO_TO_VENUE_AHEAD
+
+
+def position_text(t, ahead):
+    if t["status"] == "waiting":
+        if ahead == 0:
+            return "You're next!"
+        return "1 person ahead of you" if ahead == 1 else f"{ahead} people ahead of you"
+    if t["status"] == "called":
+        return "It's your turn. Please come to the counter now."
+    if t["status"] == "served":
+        return "You've been served. Thank you!"
+    return "You are no longer in the queue."
 
 
 @app.route("/")
@@ -38,11 +85,20 @@ def index():
 
 @app.get("/join")
 def join_form():
+    t = active_ticket()
+    if t:
+        flash("You are already in the queue, To get a new ticket please leave the queue.", "info")
+        return redirect(url_for("ticket", ticket_id=t["number"]))
     return render_template("join.html", services=SERVICES, sizes=SIZES, form={})
 
 
 @app.post("/join")
 def join():
+    t = active_ticket()
+    if t:
+        flash("You are already in the queue, To get a new ticket please leave the queue.", "info")
+        return redirect(url_for("ticket", ticket_id=t["number"]))
+
     form = request.form
     name = form.get("name", "").strip()
     section = form.get("section", "").strip()
@@ -80,40 +136,14 @@ def join():
     if item2 is not None:
         items.append({"service_id": item2, "size": size2})
 
+    token = session.setdefault("session_id", secrets.token_urlsafe(16))
+    session.permanent = True  # keeps the cookie after the browser closes
+
     number = TICKETS[-1]["number"] + 1 if TICKETS else 1
     TICKETS.append({"number": number, "name": name, "section": section,
-                    "items": items, "status": "waiting"})
+                    "items": items, "status": "waiting", "session_id": token})
     flash(f"You joined the queue. Your queue number is #{number}.", "success")
     return redirect(url_for("ticket", ticket_id=number))
-
-STATUS_LABELS = {"waiting": "Waiting", "called": "Called", "served": "Served",
-                 "no-show": "No-show", "left": "Left the queue"}
-STATUS_BADGES = {"waiting": "text-bg-warning", "called": "text-bg-success",
-                 "served": "text-bg-secondary", "no-show": "text-bg-danger",
-                 "left": "text-bg-secondary"}
-
-
-def find_ticket(ticket_id):
-    return next((t for t in TICKETS if t["number"] == ticket_id), None)
-
-
-def people_ahead(t):
-    """Students still waiting with an earlier queue number. One queue for everyone."""
-    return sum(1 for x in TICKETS
-               if x["status"] == "waiting" and x["number"] < t["number"])
-
-
-def position_text(t, ahead):
-    if t["status"] == "waiting":
-        if ahead == 0:
-            return "You're next!"
-        return "1 person ahead of you" if ahead == 1 else f"{ahead} people ahead of you"
-    if t["status"] == "called":
-        return "It's your turn. Please come to the counter now."
-    if t["status"] == "served":
-        return "You've been served. Thank you!"
-    return "You are no longer in the queue."
-
 
 
 @app.get("/queue/<int:ticket_id>")
@@ -127,7 +157,8 @@ def ticket(ticket_id):
     return render_template("ticket.html", ticket=t, items=items,
                            status_label=STATUS_LABELS[t["status"]],
                            badge_class=STATUS_BADGES[t["status"]],
-                           position_text=position_text(t, ahead))
+                           position_text=position_text(t, ahead),
+                           go_to_venue=should_go_to_venue(t, ahead))
 
 
 @app.post("/queue/<int:ticket_id>/leave")
@@ -155,6 +186,7 @@ def ticket_status(ticket_id):
         "badge_class": STATUS_BADGES[t["status"]],
         "position_text": position_text(t, ahead),
         "ahead": ahead,
+        "go_to_venue": should_go_to_venue(t, ahead),
         "active": t["status"] in ("waiting", "called"),
     }
 
@@ -223,3 +255,8 @@ def staff_action(ticket_id, action):
         flash(f"Queue number #{ticket_id} marked {STATUS_LABELS[new_status].lower()}.", "info")
     return redirect(url_for("staff_dashboard",
                             service_id=request.form.get("service_id", type=int)))
+
+
+if __name__ == "__main__":
+    # Lets you also start the app with: python app.py
+    app.run(debug=True)
