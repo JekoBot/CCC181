@@ -9,7 +9,8 @@
     <div class="card text-center">
       <div class="card-body p-4">
         <p class="text-body-secondary mb-0">Your queue number</p>
-        <p class="display-1 fw-bold mb-3">#{{ ticket.number }}</p>
+        <p class="display-1 fw-bold mb-3">#{{ ticket.id }}</p>
+        <p class="text-body-secondary">Joined {{ ticket.joined_at|local }}</p>
 
         <div id="live-status" aria-live="polite">
           <p class="mb-2">
@@ -36,7 +37,7 @@
         </ul>
 
         <form id="leave-form" method="post"
-              action="{{ url_for('leave_queue', ticket_id=ticket.number) }}"
+              action="{{ url_for('leave_queue', ticket_id=ticket.id) }}"
               onsubmit="return confirm('Leave the queue?');"
               {% if ticket.status not in ['waiting', 'called'] %}hidden{% endif %}>
           <button type="submit" class="btn btn-outline-secondary btn-lg w-100">Leave queue</button>
@@ -49,7 +50,7 @@
 
 {% block scripts %}
 <script>
-  const statusUrl = "{{ url_for('ticket_status', ticket_id=ticket.number) }}";
+  const statusUrl = "{{ url_for('ticket_status', ticket_id=ticket.id) }}";
   const badge = document.getElementById("status-badge");
   const positionText = document.getElementById("position-text");
   const receiptNote = document.getElementById("receipt-note");

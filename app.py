@@ -11,6 +11,8 @@ from dotenv import load_dotenv
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
 from flask_migrate import Migrate
 from sqlalchemy.exc import IntegrityError
+from datetime import timedelta, timezone
+from sqlalchemy import func
 
 from models import Item, Ticket, TicketItem, db
 
@@ -23,6 +25,15 @@ app.config["SQLALCHEMY_ECHO"] = os.environ.get("SQLALCHEMY_ECHO") == "1"
 
 db.init_app(app)
 migrate = Migrate(app, db)
+
+PH_TIME = timezone(timedelta(hours=8)) 
+
+
+@app.template_filter("local")
+def local_time(value):
+    """Show a database time in Philippine time, e.g. Nov 10, 08:01 AM."""
+    return value.astimezone(PH_TIME).strftime("%b %d, %I:%M %p") if value else ""
+
 @app.cli.command("seed")
 def seed():
     """Add the starting items if they are not there yet."""
@@ -77,26 +88,28 @@ def active_ticket():
 
 
 def people_ahead(t):
-    """Students still waiting with an earlier queue number. One queue for everyone."""
-    return sum(1 for x in TICKETS
-               if x["status"] == "waiting" and x["number"] < t["number"])
+    """Waiting tickets with a smaller id. The id is unique and always in join order."""
+    stmt = (db.select(func.count()).select_from(Ticket)
+            .where(Ticket.status == "waiting", Ticket.id < t.id))
+    return db.session.scalar(stmt)
+
 
 
 GO_TO_VENUE_AHEAD = 5  # tell students to head to the venue when fewer than this many are ahead
 
 
 def should_go_to_venue(t, ahead):
-    return t["status"] in ("waiting", "called") and ahead < GO_TO_VENUE_AHEAD
+    return t.status in ("waiting", "called") and ahead < GO_TO_VENUE_AHEAD
 
 
 def position_text(t, ahead):
-    if t["status"] == "waiting":
+    if t.status == "waiting":
         if ahead == 0:
             return "You're next!"
         return "1 person ahead of you" if ahead == 1 else f"{ahead} people ahead of you"
-    if t["status"] == "called":
+    if t.status == "called":
         return "It's your turn. Please come to the counter now."
-    if t["status"] == "served":
+    if t.status == "served":
         return "You've been served. Thank you!"
     return "You are no longer in the queue."
 
@@ -181,17 +194,15 @@ def join():
 
 @app.get("/queue/<int:ticket_id>")
 def ticket(ticket_id):
-    t = find_ticket(ticket_id)
-    if t is None:
-        abort(404)
+    t = db.get_or_404(Ticket, ticket_id)
     ahead = people_ahead(t)
-    names = {s["id"]: s["name"] for s in SERVICES}
-    items = [{"name": names[i["service_id"]], "size": i["size"]} for i in t["items"]]
+    items = [{"name": ti.item.name, "size": ti.size} for ti in t.items]
     return render_template("ticket.html", ticket=t, items=items,
-                           status_label=STATUS_LABELS[t["status"]],
-                           badge_class=STATUS_BADGES[t["status"]],
+                           status_label=STATUS_LABELS[t.status],
+                           badge_class=STATUS_BADGES[t.status],
                            position_text=position_text(t, ahead),
                            go_to_venue=should_go_to_venue(t, ahead))
+                           
 
 
 @app.post("/queue/<int:ticket_id>/leave")
@@ -209,54 +220,56 @@ def leave_queue(ticket_id):
 
 @app.get("/queue/<int:ticket_id>/status.json")
 def ticket_status(ticket_id):
-    t = find_ticket(ticket_id)
-    if t is None:
-        abort(404)
+    t = db.get_or_404(Ticket, ticket_id)
     ahead = people_ahead(t)
     return {
-        "status": t["status"],
-        "status_label": STATUS_LABELS[t["status"]],
-        "badge_class": STATUS_BADGES[t["status"]],
+        "status": t.status,
+        "status_label": STATUS_LABELS[t.status],
+        "badge_class": STATUS_BADGES[t.status],
         "position_text": position_text(t, ahead),
         "ahead": ahead,
         "go_to_venue": should_go_to_venue(t, ahead),
-        "active": t["status"] in ("waiting", "called"),
+        "active": t.status in ("waiting", "called"),
     }
+
+def all_items():
+    return db.session.scalars(db.select(Item).order_by(Item.name)).all()
 
 
 @app.get("/staff")
 def staff_dashboard():
-    service_id = request.args.get("service_id", type=int)
-    names = {s["id"]: s["name"] for s in SERVICES}
-
-    def wants(t):
-        return service_id is None or any(i["service_id"] == service_id for i in t["items"])
-
-    active = [t for t in TICKETS if t["status"] in ("waiting", "called") and wants(t)]
-    active.sort(key=lambda t: t["number"])
+    item_id = request.args.get("service_id", type=int)
+    stmt = (db.select(Ticket)
+            .where(Ticket.status.in_(["waiting", "called"]))
+            .order_by(Ticket.joined_at, Ticket.id))
+    if item_id:
+        stmt = stmt.where(Ticket.items.any(TicketItem.item_id == item_id))
 
     rows = []
-    for t in active:
-        first = t["items"][0]
-        second = t["items"][1] if len(t["items"]) > 1 else None
+    for t in db.session.scalars(stmt).all():
+        first = t.items[0]
+        second = t.items[1] if len(t.items) > 1 else None
         rows.append({
-            "number": t["number"], "name": t["name"], "section": t["section"],
-            "item1": names[first["service_id"]], "size1": first["size"],
-            "item2": names[second["service_id"]] if second else "-",
-            "size2": second["size"] if second else "-",
-            "status": t["status"],
-            "status_label": STATUS_LABELS[t["status"]],
-            "badge_class": STATUS_BADGES[t["status"]],
+            "number": t.id, "name": t.name, "section": t.section,
+            "item1": first.item.name, "size1": first.size,
+            "item2": second.item.name if second else "-",
+            "size2": second.size if second else "-",
+            "joined_at": t.joined_at,
+            "status": t.status,
+            "status_label": STATUS_LABELS[t.status],
+            "badge_class": STATUS_BADGES[t.status],
         })
 
     waiting_count = sum(1 for r in rows if r["status"] == "waiting")
     now_serving = [r for r in rows if r["status"] == "called"]
+    items = all_items()
     # ★ How many students are waiting for each item
-    counts = {s["id"]: sum(1 for t in TICKETS
-                           if t["status"] == "waiting"
-                           and any(i["service_id"] == s["id"] for i in t["items"]))
-              for s in SERVICES}
-    return render_template("staff.html", rows=rows, services=SERVICES, selected=service_id,
+    counts = {i.id: db.session.scalar(
+                  db.select(func.count(Ticket.id))
+                  .where(Ticket.status == "waiting",
+                         Ticket.items.any(TicketItem.item_id == i.id)))
+              for i in items}
+    return render_template("staff.html", rows=rows, services=items, selected=item_id,
                            waiting_count=waiting_count, now_serving=now_serving, counts=counts)
 
 
