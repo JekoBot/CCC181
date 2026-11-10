@@ -13,12 +13,18 @@ Lighthouse accessibility scores (mobile):
 | My place | 100 | 100 | ![My place](screenshots/lighthouse_myplace.png) |
 | Staff dashboard | 95 | 100 | Before: ![Staff before](screenshots/lighthouse_staff_before.png)<br>After: ![Staff after](screenshots/lighthouse_staff_after.png) |
 
+The Staff dashboard first scored 95. Lighthouse listed one failing item:
+background and foreground colors without a sufficient contrast ratio. I changed
+the inactive navbar link to white and darkened the text color of the No-show and
+Filter buttons in `static/css/style.css`, then ran Lighthouse again and the
+score was 100.
+
 ## 9b. Keyboard
 
 All three screens can be used with a keyboard only. Tab moves through the
 navigation links, form fields, dropdowns and buttons, and the focused
-control is visibly identifiable. The mobile navigation toggle is also
-keyboard reachable.
+control is visibly identifiable. The skip link appears on the first Tab, and the
+mobile navigation toggle is also keyboard reachable.
 
 I completed both tasks without a mouse:
 
@@ -26,6 +32,11 @@ I completed both tasks without a mouse:
   Size 1, Item 2 and Size 2, to Get your Queue Number.
 - On the staff dashboard, filtered by item, pressed Call next, and served a
   student.
+
+Problem found: it was not clear where the keyboard focus was on the navigation
+links, or which page was active. Bootstrap turns off the focus outline on navbar
+links. Fix: added a visible focus outline to every control and made the current
+page's link bold and underlined.
 
 ## Manual checklist
 
@@ -41,8 +52,8 @@ I completed both tasks without a mouse:
 
 ## Fixes
 
-- Increased the staff Serve and No-show buttons to a minimum height of 44px
-  (`.btn { min-height: 44px; }`).
-- Increased the mobile navigation toggle to a minimum height and width of
-  44px (`.navbar-toggler { min-height: 44px; min-width: 44px; }`).
-- [Add any other issue Lighthouse listed and what you changed.]
+- Increased the staff Serve and No-show buttons to a minimum height of 44px.
+- Increased the mobile navigation toggle to 44 × 44px.
+- Fixed the Staff dashboard contrast failure: navbar link color, and No-show and Filter button text colors.
+- Made keyboard focus visible on every control, including the navbar links.
+- Made the current page's navbar link bold and underlined.

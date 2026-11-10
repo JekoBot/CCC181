@@ -4,15 +4,33 @@ Run it with:
     flask --app app run --debug
 then open http://127.0.0.1:5000
 """
+import os
 import secrets
 
+from dotenv import load_dotenv
 from flask import Flask, abort, flash, redirect, render_template, request, session, url_for
+from flask_migrate import Migrate
+from sqlalchemy.exc import IntegrityError
+
+from models import Item, Ticket, TicketItem, db
+
+load_dotenv()
 
 app = Flask(__name__)
 app.secret_key = "dev-only-change-me"
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ["DATABASE_URL"]
+app.config["SQLALCHEMY_ECHO"] = os.environ.get("SQLALCHEMY_ECHO") == "1"
 
-# The items students can claim, and the sizes they can pick.
-# Replace both with the real ones from the sizing form.
+db.init_app(app)
+migrate = Migrate(app, db)
+@app.cli.command("seed")
+def seed():
+    """Add the starting items if they are not there yet."""
+    for name in ["PE shirt", "PE pants"]:
+        if db.session.scalar(db.select(Item).filter_by(name=name)) is None:
+            db.session.add(Item(name=name))
+    db.session.commit()
+    print("Items are ready.")
 SERVICES = [
     {"id": 1, "name": "PE shirt"},
     {"id": 2, "name": "PE pants"},
@@ -43,14 +61,19 @@ def find_ticket(ticket_id):
     return next((t for t in TICKETS if t["number"] == ticket_id), None)
 
 
+def active_items():
+    stmt = db.select(Item).filter_by(active=True).order_by(Item.name)
+    return db.session.scalars(stmt).all()
+
+
 def active_ticket():
     """The ticket this browser joined with, if it is still waiting or called."""
     token = session.get("session_id")
     if not token:
         return None
-    return next((t for t in TICKETS
-                 if t.get("session_id") == token
-                 and t["status"] in ("waiting", "called")), None)
+    return db.session.scalar(
+        db.select(Ticket).where(Ticket.session_id == token,
+                                Ticket.status.in_(["waiting", "called"])))
 
 
 def people_ahead(t):
@@ -87,17 +110,17 @@ def index():
 def join_form():
     t = active_ticket()
     if t:
-        flash("You are already in the queue, To get a new ticket please leave the queue.", "info")
-        return redirect(url_for("ticket", ticket_id=t["number"]))
-    return render_template("join.html", services=SERVICES, sizes=SIZES, form={})
+        flash("You are already in the queue. To get a new queue number, please leave the queue first.", "info")
+        return redirect(url_for("ticket", ticket_id=t.id))
+    return render_template("join.html", services=active_items(), sizes=SIZES, form={})
 
 
 @app.post("/join")
 def join():
     t = active_ticket()
     if t:
-        flash("You are already in the queue, To get a new ticket please leave the queue.", "info")
-        return redirect(url_for("ticket", ticket_id=t["number"]))
+        flash("You are already in the queue. To get a new queue number, please leave the queue first.", "info")
+        return redirect(url_for("ticket", ticket_id=t.id))
 
     form = request.form
     name = form.get("name", "").strip()
@@ -106,13 +129,13 @@ def join():
     size1 = form.get("size1", "")
     item2 = form.get("item2", type=int)
     size2 = form.get("size2", "")
-    valid_items = [s["id"] for s in SERVICES]
+    valid_items = {i.id for i in active_items()}
 
     errors = {}
-    if not name:
-        errors["name"] = "Enter your name."
-    if not section:
-        errors["section"] = "Enter your class section."
+    if not name or len(name) > 80:
+        errors["name"] = "Enter your name (up to 80 characters)."
+    if not section or len(section) > 30:
+        errors["section"] = "Enter your class section (up to 30 characters)."
     if item1 not in valid_items:
         errors["item1"] = "Choose an item."
     if size1 not in SIZES:
@@ -129,21 +152,31 @@ def join():
 
     if errors:
         flash("Please fix the highlighted fields.", "danger")
-        return render_template("join.html", services=SERVICES, sizes=SIZES,
+        return render_template("join.html", services=active_items(), sizes=SIZES,
                                form=form, errors=errors), 400
 
-    items = [{"service_id": item1, "size": size1}]
-    if item2 is not None:
-        items.append({"service_id": item2, "size": size2})
-
-    token = session.setdefault("session_id", secrets.token_urlsafe(16))
+    token = session.get("session_id") or secrets.token_urlsafe(16)
+    session["session_id"] = token
     session.permanent = True  # keeps the cookie after the browser closes
 
-    number = TICKETS[-1]["number"] + 1 if TICKETS else 1
-    TICKETS.append({"number": number, "name": name, "section": section,
-                    "items": items, "status": "waiting", "session_id": token})
-    flash(f"You joined the queue. Your queue number is #{number}.", "success")
-    return redirect(url_for("ticket", ticket_id=number))
+    ticket = Ticket(name=name, section=section, session_id=token)
+    ticket.items.append(TicketItem(item_id=item1, size=size1, position=1))
+    if item2 is not None:
+        ticket.items.append(TicketItem(item_id=item2, size=size2, position=2))
+    db.session.add(ticket)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()  # the session must be rolled back before it can be used again
+        t = active_ticket()
+        if t:  # two quick submits from the same browser: the unique index refused the second
+            return redirect(url_for("ticket", ticket_id=t.id))
+        flash("Something went wrong saving your ticket. Please try again.", "danger")
+        return render_template("join.html", services=active_items(), sizes=SIZES,
+                               form=form, errors={}), 409
+
+    flash(f"You joined the queue. Your queue number is #{ticket.id}.", "success")
+    return redirect(url_for("ticket", ticket_id=ticket.id))
 
 
 @app.get("/queue/<int:ticket_id>")
