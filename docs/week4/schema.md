@@ -18,7 +18,7 @@ The queue is not a table: it is every ticket with status `waiting`. The number o
 | Table | Columns |
 | --- | --- |
 | `items` | `id`, `name`, `active` |
-| `tickets` | `id`, `name`, `section`, `status`, `joined_at`, `session_id` |
+| `tickets` | `id`, `name`, `section`, `status`, `joined_at`, `session_id`, `called_at` |
 | `ticket_items` | `id`, `ticket_id`, `item_id`, `size`, `position` |
 
 ## 2c. Column types and constraints
@@ -34,6 +34,7 @@ The queue is not a table: it is every ticket with status `waiting`. The number o
 | `tickets` | `status` | `varchar(20)` | NOT NULL DEFAULT `'waiting'`, CHECK (status IN (`'waiting'`, `'called'`, `'served'`, `'no-show'`, `'left'`)) | Allows only known queue states. |
 | `tickets` | `joined_at` | `timestamptz` | NOT NULL DEFAULT `now()` | Records when the student joined, for the time shown to staff and for reports. |
 | `tickets` | `session_id` | `varchar(64)` | NOT NULL | A random token kept in the student's browser session, used to stop one browser holding two active tickets. |
+| `tickets` | `called_at` | `timestamptz` | NULL | Records when staff called the student, so the wait before being called can be measured. |
 | `ticket_items` | `id` | `integer GENERATED ALWAYS AS IDENTITY` | PRIMARY KEY | Identifies each item line on a ticket. |
 | `ticket_items` | `ticket_id` | `integer` | NOT NULL, FOREIGN KEY REFERENCES `tickets(id)` ON DELETE CASCADE | Connects each item line to its ticket; a mistaken ticket can be deleted together with its items. |
 | `ticket_items` | `item_id` | `integer` | NOT NULL, FOREIGN KEY REFERENCES `items(id)` ON DELETE RESTRICT | Prevents an item line from pointing to a missing item, and keeps old tickets readable. |
@@ -80,6 +81,7 @@ WHERE status = 'waiting';
 - **Ticket items** are inserted in the same transaction as the ticket, starting at position 1, and a join with no items is rejected.
 - **Status changes** follow fixed transitions: `waiting` → `called`; `called` → `served` or `no-show`; `waiting` or `called` → `left`. Each update names the expected current status in its WHERE clause, so an invalid change updates zero rows.
 - **Switched-off items** are hidden from the join form, and a join that includes one is rejected like an item that does not exist. Staff pages still list every item.
+- **Called_at** called_at is set when staff press Call next, using now() in the database.
 
 ## Duplicate tickets
 

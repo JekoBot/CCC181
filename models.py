@@ -27,6 +27,7 @@ class Ticket(db.Model):
     status: Mapped[str] = mapped_column(String(20), default="waiting", server_default="waiting")
     joined_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     session_id: Mapped[str] = mapped_column(String(64))
+    called_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     items: Mapped[list["TicketItem"]] = relationship(
         back_populates="ticket", cascade="all, delete-orphan",
