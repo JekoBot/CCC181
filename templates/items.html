@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block title %}Manage items · UniformQ{% endblock %}
+
+{% block content %}
+<h1 class="h3 mb-3">Manage items</h1>
+
+<form method="post" action="{{ url_for('item_create') }}" class="row g-2 mb-4">
+  <div class="col-12 col-md-8">
+    <label for="new-name" class="form-label">New item</label>
+    <input id="new-name" name="name" type="text" maxlength="60" required class="form-control form-control-lg">
+  </div>
+  <div class="col-12 col-md-4 d-flex align-items-end">
+    <button type="submit" class="btn btn-primary btn-lg w-100">Add item</button>
+  </div>
+</form>
+
+<div class="table-responsive">
+  <table class="table align-middle">
+    <caption class="visually-hidden">Uniform items</caption>
+    <thead>
+      <tr><th scope="col">Name</th><th scope="col">Active</th>
+          <th scope="col">Tickets</th><th scope="col">Actions</th></tr>
+    </thead>
+    <tbody>
+      {% for i in items %}
+      <tr>
+        <td colspan="3">
+          <form method="post" action="{{ url_for('item_edit', item_id=i.id) }}" class="row g-2 align-items-center">
+            <div class="col-7">
+              <label for="name-{{ i.id }}" class="visually-hidden">Name of item {{ i.id }}</label>
+              <input id="name-{{ i.id }}" name="name" value="{{ i.name }}" maxlength="60" required class="form-control">
+            </div>
+            <div class="col-3 form-check ms-2">
+              <input id="active-{{ i.id }}" name="active" type="checkbox" class="form-check-input" {% if i.active %}checked{% endif %}>
+              <label for="active-{{ i.id }}" class="form-check-label">Active</label>
+            </div>
+            <div class="col-auto">{{ counts[i.id] }} tickets</div>
+            <div class="col-auto"><button class="btn btn-success">Save</button></div>
+          </form>
+        </td>
+        <td>
+          <form method="post" action="{{ url_for('item_delete', item_id=i.id) }}"
+                data-confirm="Delete {{ i.name }}?">
+            <button class="btn btn-outline-danger">Delete</button>
+          </form>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

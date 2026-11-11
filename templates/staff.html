@@ -4,6 +4,8 @@
 {% block content %}
 <h1 class="h3 mb-3">Staff dashboard</h1>
 
+<a class="btn btn-outline-primary mb-3" href="{{ url_for('items_list') }}">Manage items</a>
+
 <div class="row g-3 align-items-end mb-3">
   <div class="col-12 col-md-6">
     <form method="get" action="{{ url_for('staff_dashboard') }}">
@@ -75,7 +77,7 @@
         <td>{{ r.size2 }}</td>
         <td>{{ r.joined_at|local }}</td>
         <td><span class="badge {{ r.badge_class }}">{{ r.status_label }}</span></td>
-        <td class="text-nowrap">
+                <td class="text-nowrap">
           <form method="post" class="d-inline"
                 action="{{ url_for('staff_action', ticket_id=r.number, action='serve') }}">
             <input type="hidden" name="service_id" value="{{ selected or '' }}">
@@ -89,6 +91,12 @@
             <button class="btn btn-outline-danger"
                     {% if r.status != 'called' %}disabled{% endif %}
                     aria-label="Mark queue number {{ r.number }}, {{ r.name }}, as no-show">No-show</button>
+          </form>
+          <form method="post" class="d-inline ms-2"
+                action="{{ url_for('delete_ticket', ticket_id=r.number) }}"
+                data-confirm="Delete queue number {{ r.number }}? This cannot be undone.">
+            <button class="btn btn-outline-secondary"
+                    aria-label="Delete queue number {{ r.number }}, {{ r.name }}">Delete</button>
           </form>
         </td>
       </tr>

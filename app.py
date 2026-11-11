@@ -12,7 +12,7 @@ from flask import Flask, abort, flash, redirect, render_template, request, sessi
 from flask_migrate import Migrate
 from sqlalchemy.exc import IntegrityError
 from datetime import timedelta, timezone
-from sqlalchemy import func
+from sqlalchemy import func, update
 
 from models import Item, Ticket, TicketItem, db
 
@@ -42,24 +42,9 @@ def seed():
             db.session.add(Item(name=name))
     db.session.commit()
     print("Items are ready.")
-SERVICES = [
-    {"id": 1, "name": "PE shirt"},
-    {"id": 2, "name": "PE pants"},
-]
-SIZES = ["XS", "S", "M", "L", "XL", "2XL"]
 
-# Sample data for the demo. A real app would load this from a database later.
-# Each ticket: number, name, section, items, status, session_id
-# items is a list of {"service_id", "size"}, one or two entries
-# status is one of: waiting, called, served, no-show, left
-TICKETS = [
-    {"number": 1, "name": "Ana", "section": "BSCS 1A",
-     "items": [{"service_id": 1, "size": "M"}, {"service_id": 2, "size": "L"}],
-     "status": "waiting", "session_id": None},
-    {"number": 2, "name": "Ben", "section": "BSCS 1B",
-     "items": [{"service_id": 1, "size": "L"}],
-     "status": "waiting", "session_id": None},
-]
+
+SIZES = ["XS", "S", "M", "L", "XL", "2XL"]
 
 STATUS_LABELS = {"waiting": "Waiting", "called": "Called", "served": "Served",
                  "no-show": "No-show", "left": "Left the queue"}
@@ -68,13 +53,23 @@ STATUS_BADGES = {"waiting": "text-bg-warning", "called": "text-bg-success",
                  "left": "text-bg-secondary"}
 
 
-def find_ticket(ticket_id):
-    return next((t for t in TICKETS if t["number"] == ticket_id), None)
-
-
 def active_items():
     stmt = db.select(Item).filter_by(active=True).order_by(Item.name)
     return db.session.scalars(stmt).all()
+
+def all_items():
+    return db.session.scalars(db.select(Item).order_by(Item.name)).all()
+
+
+def change_status(ticket_id, expected, new_status):
+    """Update a ticket only if it still has an expected status. True if it changed."""
+    values = {"status": new_status}
+    if new_status == "called":
+        values["called_at"] = func.now()
+    result = db.session.execute(
+        update(Ticket).where(Ticket.id == ticket_id, Ticket.status.in_(expected)).values(**values))
+    db.session.commit()
+    return result.rowcount == 1
 
 
 def active_ticket():
@@ -207,11 +202,10 @@ def ticket(ticket_id):
 
 @app.post("/queue/<int:ticket_id>/leave")
 def leave_queue(ticket_id):
-    t = find_ticket(ticket_id)
-    if t is None:
-        abort(404)
-    if t["status"] in ("waiting", "called"):
-        t["status"] = "left"
+    t = db.get_or_404(Ticket, ticket_id)
+    if t.session_id != session.get("session_id"):
+        abort(403)  # only the browser that joined can leave
+    if change_status(ticket_id, ("waiting", "called"), "left"):  # soft delete: the row stays
         flash("You left the queue.", "info")
     else:
         flash("This queue number is no longer active.", "warning")
@@ -231,9 +225,6 @@ def ticket_status(ticket_id):
         "go_to_venue": should_go_to_venue(t, ahead),
         "active": t.status in ("waiting", "called"),
     }
-
-def all_items():
-    return db.session.scalars(db.select(Item).order_by(Item.name)).all()
 
 
 @app.get("/staff")
@@ -275,33 +266,100 @@ def staff_dashboard():
 
 @app.post("/staff/call-next")
 def call_next():
-    service_id = request.form.get("service_id", type=int)
-    waiting = [t for t in TICKETS
-               if t["status"] == "waiting"
-               and (service_id is None or any(i["service_id"] == service_id for i in t["items"]))]
-    if not waiting:
+    item_id = request.form.get("service_id", type=int)
+    stmt = (db.select(Ticket).where(Ticket.status == "waiting")
+            .order_by(Ticket.joined_at, Ticket.id).limit(1))
+    if item_id:
+        stmt = stmt.where(Ticket.items.any(TicketItem.item_id == item_id))
+    nxt = db.session.scalar(stmt)
+    if nxt is None:
         flash("No one is waiting.", "warning")
+    elif change_status(nxt.id, ("waiting",), "called"):
+        flash(f"Queue number #{nxt.id} ({nxt.name}) called.", "info")
     else:
-        nxt = min(waiting, key=lambda t: t["number"])
-        nxt["status"] = "called"
-        flash(f"Queue number #{nxt['number']} ({nxt['name']}) called.", "info")
-    return redirect(url_for("staff_dashboard", service_id=service_id))
+        flash("That ticket just changed. Please try again.", "warning")
+    return redirect(url_for("staff_dashboard", service_id=item_id))
+
+
+STAFF_ACTIONS = {"serve": "served", "no-show": "no-show"}
 
 
 @app.post("/staff/tickets/<int:ticket_id>/<action>")
 def staff_action(ticket_id, action):
-    new_status = {"serve": "served", "no-show": "no-show"}.get(action)
-    t = find_ticket(ticket_id)
-    if t is None or new_status is None:
+    new_status = STAFF_ACTIONS.get(action)
+    if new_status is None:
         abort(404)
-    if t["status"] != "called":
-        flash(f"Queue number #{ticket_id} must be called first.", "warning")
-    else:
-        t["status"] = new_status
+    db.get_or_404(Ticket, ticket_id)
+    if change_status(ticket_id, ("called",), new_status):
         flash(f"Queue number #{ticket_id} marked {STATUS_LABELS[new_status].lower()}.", "info")
+    else:
+        flash(f"Queue number #{ticket_id} must be called first.", "warning")
     return redirect(url_for("staff_dashboard",
                             service_id=request.form.get("service_id", type=int)))
 
+
+@app.post("/staff/delete/<int:ticket_id>")
+def delete_ticket(ticket_id):
+    t = db.get_or_404(Ticket, ticket_id)
+    db.session.delete(t)  # hard delete: its item lines go too (ON DELETE CASCADE)
+    db.session.commit()
+    flash(f"Queue number #{ticket_id} was deleted.", "warning")
+    return redirect(url_for("staff_dashboard"))
+
+@app.get("/staff/items")
+def items_list():
+    items = all_items()
+    counts = {i.id: db.session.scalar(
+                  db.select(func.count(TicketItem.id)).where(TicketItem.item_id == i.id))
+              for i in items}
+    return render_template("items.html", items=items, counts=counts)
+
+
+@app.post("/staff/items")
+def item_create():
+    name = request.form.get("name", "").strip()
+    if not name or len(name) > 60:
+        flash("Enter an item name (up to 60 characters).", "danger")
+        return redirect(url_for("items_list"))
+    db.session.add(Item(name=name))
+    try:
+        db.session.commit()
+        flash(f"Item “{name}” added.", "success")
+    except IntegrityError:
+        db.session.rollback()
+        flash(f"An item named “{name}” already exists.", "danger")
+    return redirect(url_for("items_list"))
+
+
+@app.post("/staff/items/<int:item_id>/edit")
+def item_edit(item_id):
+    item = db.get_or_404(Item, item_id)
+    name = request.form.get("name", "").strip()
+    if not name or len(name) > 60:
+        flash("Enter an item name (up to 60 characters).", "danger")
+        return redirect(url_for("items_list"))
+    item.name = name
+    item.active = request.form.get("active") == "on"  # an unticked box is not sent at all
+    try:
+        db.session.commit()
+        flash(f"Item “{name}” saved.", "success")
+    except IntegrityError:
+        db.session.rollback()
+        flash(f"An item named “{name}” already exists.", "danger")
+    return redirect(url_for("items_list"))
+
+
+@app.post("/staff/items/<int:item_id>/delete")
+def item_delete(item_id):
+    item = db.get_or_404(Item, item_id)
+    name = item.name
+    if item.ticket_items:
+        flash(f"“{name}” has tickets, so it cannot be deleted. Switch it off instead.", "danger")
+    else:
+        db.session.delete(item)
+        db.session.commit()
+        flash(f"Item “{name}” deleted.", "warning")
+    return redirect(url_for("items_list"))
 
 if __name__ == "__main__":
     # Lets you also start the app with: python app.py
