@@ -11,14 +11,14 @@
 - **Database:** PostgreSQL 17 in Docker Compose
 
 ## Requirements
+ 
+I wrote 16 functional and 7 non-functional requirements, with IDs, priorities and a *Stores data?* column. The MVP is FR-01,FR-02,FR-03,FR-04,FR-05, because it is the smallest version that gives a student a queue number, shows how many people are ahead, and lets staff serve students in order without losing a ticket on restart. Full list: [docs/requirements.md](../requirements.md)
 
-I wrote [number] functional and [number] non-functional requirements, with IDs, priorities and a *Stores data?* column. The MVP is [list the IDs], because it is the smallest version that gives a student a queue number, shows how many people are ahead, and lets staff serve students in order without losing a ticket on restart. Full list: [docs/requirements.md](../requirements.md)
-
-I checked the list with [role only, e.g. a student assistant at the shop]. They said "[their words]", so I [what you changed].
+I checked the list with a student claiming a uniform. They said “I need to know when to go, not just a count.", so I Kept FR-02, and My place now shows “almost your turn, make your way to the venue” and “go to the counter” states..
 
 ## ERD
 
-![ERD](erd.png)
+![ERD](ERD.png)
 
 One ticket has one or two ticket items. One item appears in many ticket items. Each ticket item belongs to exactly one ticket and one item. Full design: [schema.md](schema.md)
 
