@@ -11,7 +11,7 @@
 
       <div class="mb-3">
         <label for="name" class="form-label">Name</label>
-        <input id="name" name="name" type="text" autocomplete="name" required
+        <input id="name" name="name" type="text" autocomplete="name" required maxlength="80"
                class="form-control {% if errors and errors.name %}is-invalid{% endif %}"
                value="{{ form.get('name', '') }}"
                {% if errors and errors.name %}aria-describedby="name-error"{% endif %}>
@@ -22,7 +22,7 @@
 
       <div class="mb-3">
         <label for="section" class="form-label">Class Section</label>
-        <input id="section" name="section" type="text" required placeholder="e.g. BSCS 1A"
+        <input id="section" name="section" type="text" required maxlength="30" placeholder="e.g. BSCS 1A"
                class="form-control {% if errors and errors.section %}is-invalid{% endif %}"
                value="{{ form.get('section', '') }}"
                {% if errors and errors.section %}aria-describedby="section-error"{% endif %}>
@@ -40,6 +40,7 @@
             Item {{ n }}{% if n == 2 %} (optional){% endif %}
           </label>
           <select id="{{ item_key }}" name="{{ item_key }}"
+                  {% if n == 1 %}required{% endif %}
                   class="form-select {% if errors and errors[item_key] %}is-invalid{% endif %}"
                   {% if errors and errors[item_key] %}aria-describedby="{{ item_key }}-error"{% endif %}>
             <option value="">Choose item…</option>
@@ -56,6 +57,7 @@
         <div class="col-4">
           <label for="{{ size_key }}" class="form-label">Size {{ n }}</label>
           <select id="{{ size_key }}" name="{{ size_key }}"
+                  {% if n == 1 %}required{% endif %}
                   class="form-select {% if errors and errors[size_key] %}is-invalid{% endif %}"
                   {% if errors and errors[size_key] %}aria-describedby="{{ size_key }}-error"{% endif %}>
             <option value="">Size</option>
