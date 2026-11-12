@@ -13,7 +13,7 @@ The join form uses `required` on Name, Class Section, Item 1 and Size 1, and `ma
 
 Anyone can skip these checks, which is why the next two layers exist.
 
-## Layer 2: Flask (skipping the form with curl)
+## Layer 2: Flask
 
 Tickets before the requests: 2. Tickets after: 2.
 
@@ -24,7 +24,7 @@ Tickets before the requests: 2. Tickets after: 2.
 | Item 2 must differ from Item 1 | `curl.exe` with `item1=1` and `item2=1` | 400, nothing saved |
 | Size 2 needs an item 2 | `curl.exe` with `size2=L` and no `item2` | 400, nothing saved |
 
-## Layer 3: Database (skipping Flask with psql)
+## Layer 3: Database 
 
 | Rule | Constraint type | How I tested it | PostgreSQL error |
 | --- | --- | --- | --- |

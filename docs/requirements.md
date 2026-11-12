@@ -21,15 +21,15 @@ Never reuse or renumber an ID. A requirement that is dropped stays in the table,
 | FR-05 | A staff member can call the next student, mark them served, or mark them no-show. | Must | **Yes** | Built (Week 3) |
 | FR-06 | A student's status updates without refreshing the page. | Must | No | Built (Week 3) |
 | FR-07 | A student can leave the queue. | Must | **Yes** | Built (Week 3) |
-| FR-08 | A staff member can switch an item off, so students can no longer choose it. | Should | **Yes** | This week |
+| FR-08 | A staff member can switch an item off, so students can no longer choose it. | Should | **Yes** | Built |
 | FR-09 ★ | My place reminds the student to bring their receipt to the counter. | Should | No | Built (Week 3) |
-| FR-10 ★ | A student who is already waiting or called is sent back to My place and cannot hold a second active ticket in the same browser. | Should | **Yes** | This week |
+| FR-10 ★ | A student who is already waiting or called is sent back to My place and cannot hold a second active ticket in the same browser. | Should | **Yes** | Built |
 | FR-11 ★ | A staff member can serve or mark no-show only a student who has been called, so the queue order cannot be skipped. | Must | **Yes** | Built (Week 3) |
-| FR-12 | A staff member can see how many students are waiting and when each one joined. | Should | **Yes** | This week |
+| FR-12 | A staff member can see how many students are waiting and when each one joined. | Should | **Yes** | Built |
 | FR-13 | A staff member can see how many students left before being served, per day. | Could | **Yes** | Later |
-| FR-14 | A staff member can delete a mistaken ticket. | Should | **Yes** | This week |
+| FR-14 | A staff member can delete a mistaken ticket. | Should | **Yes** | Built |
 | FR-15 | Only staff can open the staff pages. | Should | **Yes** | Later (Week 11) |
-| FR-16 | The app will tell when to go to the venue | Should | No | Built This Week |
+| FR-16 | The app will tell when to go to the venue | Should | No | Built Built |
 
 
 ★ marks requirements specific to this setting: the receipt reminder (FR-09), one active ticket per student (FR-10) and serving only called students (FR-11).
